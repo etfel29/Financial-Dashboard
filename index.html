@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Financial Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #f9f9f7;
+      --surface: #f0ede8;
+      --card: #ffffff;
+      --border: rgba(0,0,0,0.08);
+      --text-primary: #1a1a18;
+      --text-secondary: #5f5e5a;
+      --text-muted: #888780;
+      --up: #1D9E75;
+      --down: #D85A30;
+      --warn: #BA7517;
+      --up-bg: #E1F5EE;
+      --down-bg: #FAECE7;
+      --warn-bg: #FAEEDA;
+      --radius: 10px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1c1c1a;
+        --surface: #252523;
+        --card: #2c2c2a;
+        --border: rgba(255,255,255,0.08);
+        --text-primary: #f0ede8;
+        --text-secondary: #b4b2a9;
+        --text-muted: #888780;
+        --up-bg: #04342C;
+        --down-bg: #4A1B0C;
+        --warn-bg: #412402;
+      }
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text-primary); min-height: 100vh; padding: 24px 20px; }
+    .container { max-width: 1100px; margin: 0 auto; }
+    header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 24px; flex-wrap: wrap; gap: 8px; }
+    h1 { font-size: 22px; font-weight: 500; }
+    .as-of { font-size: 12px; color: var(--text-muted); }
+    .section-label { font-size: 11px; font-weight: 500; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-muted); margin: 24px 0 10px; }
+    .section-label:first-of-type { margin-top: 0; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .grid-7 { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+    .card { background: var(--card); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+    .card-label { font-size: 11px; color: var(--text-muted); margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .card-value { font-size: 22px; font-weight: 500; line-height: 1; }
+    .card-change { font-size: 12px; margin-top: 4px; }
+    .pill { display: inline-block; font-size: 10px; font-weight: 500; padding: 2px 8px; border-radius: 20px; margin-top: 6px; }
+    .up { color: var(--up); } .down { color: var(--down); } .warn { color: var(--warn); }
+    .pill-up { background: var(--up-bg); color: var(--up); }
+    .pill-down { background: var(--down-bg); color: var(--down); }
+    .pill-warn { background: var(--warn-bg); color: var(--warn); }
+    .mag-card { background: var(--card); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 11px 12px; }
+    .ticker { font-size: 13px; font-weight: 500; }
+    .company { font-size: 10px; color: var(--text-muted); margin-bottom: 6px; }
+    .stock-price { font-size: 15px; font-weight: 500; }
+    .stock-ytd { font-size: 11px; margin-top: 3px; }
+    .chart-wrap { margin-top: 16px; position: relative; width: 100%; height: 150px; }
+    hr { border: none; border-top: 0.5px solid var(--border); margin: 24px 0 12px; }
+    footer { font-size: 11px; color: var(--text-muted); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; }
+    @media (max-width: 700px) {
+      .grid-3, .grid-4 { grid-template-columns: repeat(2, 1fr); }
+      .grid-7 { grid-template-columns: repeat(4, 1fr); }
+    }
+    @media (max-width: 420px) {
+      .grid-3, .grid-4 { grid-template-columns: 1fr 1fr; }
+      .grid-7 { grid-template-columns: repeat(3, 1fr); }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Financial Dashboard</h1>
+    <span class="as-of" id="as-of">Loading...</span>
+  </header>
+
+  <div class="section-label">Major Indexes</div>
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-label">S&amp;P 500</div>
+      <div class="card-value" id="sp500-price">—</div>
+      <div class="card-change" id="sp500-day">—</div>
+      <span class="pill" id="sp500-ytd-pill">—</span>
+    </div>
+    <div class="card">
+      <div class="card-label">NASDAQ 100</div>
+      <div class="card-value" id="ndx-price">—</div>
+      <div class="card-change" id="ndx-day">—</div>
+      <span class="pill" id="ndx-ytd-pill">—</span>
+    </div>
+    <div class="card">
+      <div class="card-label">NYSE Composite</div>
+      <div class="card-value" id="nya-price">—</div>
+      <div class="card-change" id="nya-day">—</div>
+      <span class="pill" id="nya-ytd-pill">—</span>
+    </div>
+  </div>
+
+  <div class="section-label">Market &amp; Economic Indicators</div>
+  <div class="grid-4">
+    <div class="card">
+      <div class="card-label">VIX (Volatility)</div>
+      <div class="card-value" id="vix-price">—</div>
+      <div class="card-change" id="vix-day">—</div>
+      <span class="pill" id="vix-pill">—</span>
+    </div>
+    <div class="card">
+      <div class="card-label">LEI (Conference Board)</div>
+      <div class="card-value">97.5</div>
+      <div class="card-change neutral">Jan 2026 (latest)</div>
+      <span class="pill pill-down">−0.1% MoM</span>
+    </div>
+    <div class="card">
+      <div class="card-label">Unemployment Rate</div>
+      <div class="card-value">4.3%</div>
+      <div class="card-change" style="color:var(--text-muted)">March 2026 (BLS)</div>
+      <span class="pill pill-up">↓ from 4.4%</span>
+    </div>
+    <div class="card">
+      <div class="card-label">Nonfarm Payrolls</div>
+      <div class="card-value">+178K</div>
+      <div class="card-change" style="color:var(--text-muted)">March 2026</div>
+      <span class="pill pill-up">Beat est. 60K</span>
+    </div>
+  </div>
+
+  <div class="section-label">Magnificent 7 — Price &amp; YTD Return</div>
+  <div class="grid-7" id="mag7-grid">
+    <!-- populated by JS -->
+  </div>
+
+  <div class="chart-wrap">
+    <canvas id="mag7chart"></canvas>
+  </div>
+
+  <hr>
+  <footer>
+    <span>Sources: Yahoo Finance (via yfinance) · BLS · Conference Board</span>
+    <span id="footer-updated">—</span>
+  </footer>
+</div>
+
+<script>
+  const DATA = window.DASHBOARD_DATA || null;
+
+  function fmt(n, decimals=2) {
+    return n == null ? '—' : Number(n).toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+  }
+
+  function pillClass(val) {
+    return val >= 0 ? 'pill-up' : 'pill-down';
+  }
+
+  function changeClass(val) {
+    return val >= 0 ? 'up' : 'down';
+  }
+
+  function setIndex(idPrefix, data) {
+    if (!data) return;
+    document.getElementById(idPrefix + '-price').textContent = fmt(data.price, 2);
+    const dayEl = document.getElementById(idPrefix + '-day');
+    const sign = data.day_change >= 0 ? '+' : '';
+    dayEl.textContent = sign + fmt(data.day_change, 2) + ' (' + sign + fmt(data.day_pct, 2) + '%) today';
+    dayEl.className = 'card-change ' + changeClass(data.day_change);
+    const ytdEl = document.getElementById(idPrefix + '-ytd-pill');
+    const ytdSign = data.ytd_pct >= 0 ? '+' : '';
+    ytdEl.textContent = ytdSign + fmt(data.ytd_pct, 1) + '% YTD';
+    ytdEl.className = 'pill ' + pillClass(data.ytd_pct);
+  }
+
+  function renderMag7(stocks) {
+    const grid = document.getElementById('mag7-grid');
+    grid.innerHTML = '';
+    stocks.forEach(s => {
+      const sign = s.ytd_pct >= 0 ? '+' : '';
+      const cls = s.ytd_pct >= 0 ? 'up' : 'down';
+      grid.innerHTML += `
+        <div class="mag-card">
+          <div class="ticker">${s.ticker}</div>
+          <div class="company">${s.name}</div>
+          <div class="stock-price">$${fmt(s.price, 2)}</div>
+          <div class="stock-ytd ${cls}">YTD: ${sign}${fmt(s.ytd_pct, 1)}%</div>
+        </div>`;
+    });
+  }
+
+  function renderChart(stocks) {
+    const ctx = document.getElementById('mag7chart').getContext('2d');
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: stocks.map(s => s.ticker),
+        datasets: [{
+          label: 'YTD Return (%)',
+          data: stocks.map(s => parseFloat(s.ytd_pct.toFixed(1))),
+          backgroundColor: stocks.map(s => s.ytd_pct >= 0 ? '#1D9E75' : '#D85A30'),
+          borderRadius: 4,
+          barThickness: 22,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ' ' + c.parsed.y.toFixed(1) + '% YTD' } } },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: '#888780', font: { size: 11 } } },
+          y: { grid: { color: 'rgba(136,135,128,0.15)' }, ticks: { color: '#888780', font: { size: 11 }, callback: v => v + '%' } }
+        }
+      }
+    });
+  }
+
+  function setVix(data) {
+    if (!data) return;
+    document.getElementById('vix-price').textContent = fmt(data.price, 2);
+    const sign = data.day_change >= 0 ? '+' : '';
+    const dayEl = document.getElementById('vix-day');
+    dayEl.textContent = sign + fmt(data.day_change, 2) + ' (' + sign + fmt(data.day_pct, 2) + '%) today';
+    dayEl.className = 'card-change ' + changeClass(data.day_change);
+    const pill = document.getElementById('vix-pill');
+    if (data.price < 15) { pill.textContent = 'Low'; pill.className = 'pill pill-up'; }
+    else if (data.price < 25) { pill.textContent = 'Moderate'; pill.className = 'pill pill-warn'; }
+    else { pill.textContent = 'Elevated'; pill.className = 'pill pill-down'; }
+  }
+
+  if (DATA) {
+    setIndex('sp500', DATA.sp500);
+    setIndex('ndx', DATA.ndx);
+    setIndex('nya', DATA.nya);
+    setVix(DATA.vix);
+    renderMag7(DATA.mag7);
+    renderChart(DATA.mag7);
+    document.getElementById('as-of').textContent = 'As of ' + DATA.as_of;
+    document.getElementById('footer-updated').textContent = 'Last updated: ' + DATA.as_of;
+  } else {
+    document.getElementById('as-of').textContent = 'Data unavailable — check GitHub Actions';
+  }
+</script>
+</body>
+</html>
